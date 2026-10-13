@@ -1,5 +1,9 @@
 # Arrays in Real-World Applications: Cinema Seat Booking System
 
+**Live app:** https://mysterious141-spec.github.io/seat-booking-system/
+
+The project has two versions that use the same 2D-array design: a Java console program (`SeatingBooking.java`) and a web app (`index.html`) deployed with GitHub Pages.
+
 ## Assignment Statement
 
 > Describe real-world applications that require arrays as a data structure, explain why arrays are necessary, and choose one application to develop.

@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cinema Seat Booking</title>
+<style>
+  :root {
+    --bg: #0f1424;
+    --panel: #181f36;
+    --text: #e9ecf5;
+    --muted: #98a2c3;
+    --free: #2f7d5b;
+    --free-hover: #3a9a70;
+    --taken: #b8443f;
+    --selected: #e0a82e;
+    --accent: #5b8def;
+    --line: #2a3354;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.45;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 40px; }
+  header h1 { margin: 0 0 4px; font-size: 1.6rem; }
+  header p { margin: 0; color: var(--muted); }
+  .layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; margin-top: 20px; align-items: start; }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .card h2 { margin: 0 0 12px; font-size: 1.05rem; }
+  .screen {
+    height: 10px; border-radius: 50% / 100% 100% 0 0; margin: 4px auto 6px; width: 80%;
+    background: linear-gradient(#cfd8ff, #6d7cc0); box-shadow: 0 8px 22px rgba(120,140,255,.45);
+  }
+  .screen-label { text-align: center; color: var(--muted); font-size: .75rem; letter-spacing: .4em; margin-bottom: 14px; }
+  .grid { display: grid; gap: 8px; justify-content: center; }
+  .grid-row { display: grid; grid-template-columns: 24px repeat(6, 1fr); gap: 8px; align-items: center; }
+  .row-label, .col-label { text-align: center; color: var(--muted); font-size: .8rem; font-weight: 600; }
+  .seat {
+    height: 44px; border: 0; border-radius: 8px 8px 4px 4px; cursor: pointer; color: #fff; font-weight: 600;
+    background: var(--free); font-size: .8rem; transition: transform .08s, background .15s;
+  }
+  .seat:hover { background: var(--free-hover); transform: translateY(-2px); }
+  .seat.taken { background: var(--taken); }
+  .seat.selected { background: var(--selected); color: #1b1b1b; outline: 2px solid #fff; }
+  .seat:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .legend { display: flex; gap: 16px; justify-content: center; margin-top: 14px; font-size: .85rem; color: var(--muted); flex-wrap: wrap; }
+  .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .legend .l-free::before { background: var(--free); }
+  .legend .l-taken::before { background: var(--taken); }
+  .legend .l-sel::before { background: var(--selected); }
+  label { display: block; font-size: .85rem; color: var(--muted); margin: 10px 0 4px; }
+  input[type=text] {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
+    background: #0f1424; color: var(--text); font-size: 1rem;
+  }
+  input[type=text]:focus { outline: 2px solid var(--accent); }
+  .btns { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  button.btn {
+    padding: 10px 14px; border: 0; border-radius: 8px; font-size: .95rem; font-weight: 600; cursor: pointer;
+    background: var(--accent); color: #fff;
+  }
+  button.btn.danger { background: var(--taken); }
+  button.btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
+  button.btn:disabled { opacity: .45; cursor: not-allowed; }
+  .msg { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: .92rem; background: #202a4a; min-height: 40px; }
+  .msg.ok { background: #1d3b2f; }
+  .msg.err { background: #4a2326; }
+  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stat { background: #0f1424; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .stat b { display: block; font-size: 1.4rem; }
+  .stat small { color: var(--muted); }
+  .results { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: .92rem; }
+  .stack { display: grid; gap: 18px; }
+  footer { margin-top: 24px; color: var(--muted); font-size: .82rem; text-align: center; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Cinema Seat Booking</h1>
+    <p>Pick a seat, enter a name and book it. Price per seat: GHS 50.00</p>
+  </header>
+
+  <div class="layout">
+    <section class="card" aria-label="Seat map">
+      <h2>Seat map</h2>
+      <div class="screen"></div>
+      <div class="screen-label">SCREEN</div>
+      <div class="grid" id="grid"></div>
+      <div class="legend">
+        <span class="l-free">Available</span>
+        <span class="l-taken">Booked</span>
+        <span class="l-sel">Selected</span>
+      </div>
+    </section>
+
+    <div class="stack">
+      <section class="card" aria-label="Booking">
+        <h2>Book or cancel</h2>
+        <div id="selectedInfo" style="color:var(--muted)">No seat selected. Click a seat on the map.</div>
+        <label for="name">Customer name</label>
+        <input type="text" id="name" placeholder="e.g. Alex" autocomplete="off" maxlength="40">
+        <div class="btns">
+          <button class="btn" id="bookBtn" disabled>Book seat</button>
+          <button class="btn danger" id="cancelBtn" disabled>Cancel booking</button>
+        </div>
+        <div class="msg" id="msg" role="status" aria-live="polite">Ready.</div>
+      </section>
+
+      <section class="card" aria-label="Summary">
+        <h2>Summary</h2>
+        <div class="stats">
+          <div class="stat"><b id="sTotal">30</b><small>Total seats</small></div>
+          <div class="stat"><b id="sBooked">0</b><small>Booked</small></div>
+          <div class="stat"><b id="sFree">30</b><small>Available</small></div>
+          <div class="stat"><b id="sRev">GHS 0.00</b><small>Revenue</small></div>
+        </div>
+      </section>
+
+      <section class="card" aria-label="Find a booking">
+        <h2>Find a seat by name</h2>
+        <input type="text" id="search" placeholder="Type a customer name" autocomplete="off">
+        <ul class="results" id="results"></ul>
+        <div class="btns"><button class="btn ghost" id="resetBtn">Reset all seats</button></div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    Built with 2D arrays: <code>booked[row][col]</code> and <code>holders[row][col]</code>.
+    Source code on <a href="https://github.com/mysterious141-spec/seat-booking-system">GitHub</a>.
+  </footer>
+</div>
+
+<script>
+  // ---- Data: two 2D arrays, exactly like the Java version ----
+  const ROWS = 5, COLS = 6, PRICE = 50;
+  let booked  = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+  let holders = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+  let selected = null; // {r, c} or null
+
+  const STORE_KEY = "seatBookingData";
+
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ booked, holders })); } catch (e) { /* storage unavailable */ }
+  }
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (Array.isArray(d.booked) && d.booked.length === ROWS && Array.isArray(d.holders) && d.holders.length === ROWS) {
+        booked = d.booked;
+        holders = d.holders;
+      }
+    } catch (e) { /* ignore bad data */ }
+  }
+
+  const label = (r, c) => String.fromCharCode(65 + r) + (c + 1);
+
+  // ---- Elements ----
+  const gridEl = document.getElementById("grid");
+  const msgEl = document.getElementById("msg");
+  const nameEl = document.getElementById("name");
+  const bookBtn = document.getElementById("bookBtn");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const infoEl = document.getElementById("selectedInfo");
+  const searchEl = document.getElementById("search");
+  const resultsEl = document.getElementById("results");
+
+  function say(text, kind) {
+    msgEl.textContent = text;
+    msgEl.className = "msg" + (kind ? " " + kind : "");
+  }
+
+  // ---- Drawing the seat map (nested loops over the 2D array) ----
+  function drawGrid() {
+    gridEl.innerHTML = "";
+
+    const head = document.createElement("div");
+    head.className = "grid-row";
+    head.appendChild(document.createElement("div"));
+    for (let c = 0; c < COLS; c++) {
+      const h = document.createElement("div");
+      h.className = "col-label";
+      h.textContent = c + 1;
+      head.appendChild(h);
+    }
+    gridEl.appendChild(head);
+
+    for (let r = 0; r < ROWS; r++) {
+      const row = document.createElement("div");
+      row.className = "grid-row";
+      const rl = document.createElement("div");
+      rl.className = "row-label";
+      rl.textContent = String.fromCharCode(65 + r);
+      row.appendChild(rl);
+
+      for (let c = 0; c < COLS; c++) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "seat";
+        if (booked[r][c]) b.classList.add("taken");
+        if (selected && selected.r === r && selected.c === c) b.classList.add("selected");
+        b.textContent = label(r, c);
+        b.setAttribute("aria-label", "Seat " + label(r, c) + (booked[r][c] ? ", booked by " + holders[r][c] : ", available"));
+        b.addEventListener("click", () => selectSeat(r, c));
+        row.appendChild(b);
+      }
+      gridEl.appendChild(row);
+    }
+  }
+
+  function selectSeat(r, c) {
+    selected = { r, c };
+    if (booked[r][c]) {
+      infoEl.textContent = "Seat " + label(r, c) + " is booked by " + holders[r][c] + ".";
+      bookBtn.disabled = true;
+      cancelBtn.disabled = false;
+      say("You can cancel this booking.");
+    } else {
+      infoEl.textContent = "Seat " + label(r, c) + " is available.";
+      bookBtn.disabled = false;
+      cancelBtn.disabled = true;
+      say("Enter a name and press Book seat.");
+      nameEl.focus();
+    }
+    drawGrid();
+  }
+
+  function clearSelection() {
+    selected = null;
+    infoEl.textContent = "No seat selected. Click a seat on the map.";
+    bookBtn.disabled = true;
+    cancelBtn.disabled = true;
+  }
+
+  // ---- Actions ----
+  function bookSeat() {
+    if (!selected) return say("Select a seat first.", "err");
+    const { r, c } = selected;
+    if (booked[r][c]) return say("Sorry, that seat is already taken by " + holders[r][c] + ".", "err");
+    const name = nameEl.value.trim();
+    if (!name) return say("Name cannot be empty.", "err");
+    booked[r][c] = true;
+    holders[r][c] = name;
+    save();
+    say("Seat " + label(r, c) + " booked for " + name + ". Price: GHS " + PRICE.toFixed(2), "ok");
+    nameEl.value = "";
+    clearSelection();
+    refresh();
+  }
+
+  function cancelBooking() {
+    if (!selected) return say("Select a seat first.", "err");
+    const { r, c } = selected;
+    if (!booked[r][c]) return say("That seat is not booked.", "err");
+    const who = holders[r][c];
+    booked[r][c] = false;
+    holders[r][c] = null;
+    save();
+    say("Booking for " + who + " (seat " + label(r, c) + ") cancelled.", "ok");
+    clearSelection();
+    refresh();
+  }
+
+  function updateSummary() {
+    let count = 0;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (booked[r][c]) count++;
+      }
+    }
+    const total = ROWS * COLS;
+    document.getElementById("sTotal").textContent = total;
+    document.getElementById("sBooked").textContent = count;
+    document.getElementById("sFree").textContent = total - count;
+    document.getElementById("sRev").textContent = "GHS " + (count * PRICE).toFixed(2);
+  }
+
+  function findByName() {
+    const term = searchEl.value.trim().toLowerCase();
+    resultsEl.innerHTML = "";
+    if (!term) return;
+    let found = false;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (booked[r][c] && holders[r][c].toLowerCase().includes(term)) {
+          const li = document.createElement("li");
+          li.textContent = holders[r][c] + " → seat " + label(r, c);
+          resultsEl.appendChild(li);
+          found = true;
+        }
+      }
+    }
+    if (!found) {
+      const li = document.createElement("li");
+      li.textContent = "No booking found.";
+      resultsEl.appendChild(li);
+    }
+  }
+
+  function resetAll() {
+    booked  = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+    holders = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+    save();
+    clearSelection();
+    say("All seats are now available.", "ok");
+    refresh();
+  }
+
+  function refresh() {
+    drawGrid();
+    updateSummary();
+    findByName();
+  }
+
+  bookBtn.addEventListener("click", bookSeat);
+  cancelBtn.addEventListener("click", cancelBooking);
+  searchEl.addEventListener("input", findByName);
+  document.getElementById("resetBtn").addEventListener("click", resetAll);
+  nameEl.addEventListener("keydown", (e) => { if (e.key === "Enter") bookSeat(); });
+
+  load();
+  refresh();
+</script>
+</body>
+</html>
